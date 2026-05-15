@@ -31,7 +31,6 @@
         <h1 class="text-2xl font-bold text-slate-800 tracking-wide">能资源平衡桑基图生成系统</h1>
     </div>
 
-    <!-- 顶部页签 -->
     <div class="flex space-x-1 bg-slate-50 rounded-t-lg border-b border-gray-200 px-2 pt-2 overflow-x-auto no-scrollbar items-end">
         <div v-for="(tab, index) in tabs" :key="tab.id" 
              @click="activeTabId = tab.id"
@@ -43,10 +42,8 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-0">
-        <!-- 左侧配置区 -->
         <div class="lg:col-span-4 flex flex-col space-y-6 max-h-[85vh] overflow-y-auto no-scrollbar pb-10 px-1">
             
-            <!-- 基础数据配置 -->
             <div class="section-card">
                 <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -89,7 +86,6 @@
                 </div>
             </div>
 
-            <!-- 选中项调整 (条件渲染) -->
             <div class="section-card border-l-4 border-blue-500" v-if="selectedElement.name || selectedElement.source">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-bold text-slate-800">选中项调整</h2>
@@ -159,7 +155,6 @@
                 </div>
             </div>
 
-            <!-- 外观与排版配置 -->
             <div class="section-card">
                 <div class="flex justify-between items-center mb-5">
                     <h2 class="text-base font-bold text-slate-800 flex items-center">
@@ -173,7 +168,6 @@
                 </div>
 
                 <div class="space-y-6 text-sm">
-                    <!-- 布局设置 -->
                     <div class="bg-slate-50 p-3 rounded-md border border-slate-100">
                         <div class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">结构布局</div>
                         <div class="mb-3">
@@ -208,7 +202,6 @@
                         </div>
                     </div>
 
-                    <!-- 字体设置 -->
                     <div>
                         <div class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">默认字体设置</div>
                         <div class="grid grid-cols-2 gap-4 mb-3">
@@ -258,7 +251,6 @@
                         </div>
                     </div>
 
-                    <!-- 留白设置 -->
                     <div class="border-t border-slate-100 pt-4">
                         <div class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">画布留白 (%)</div>
                         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -284,7 +276,6 @@
             </div>
         </div>
 
-        <!-- 右侧图表展示区 -->
         <div class="lg:col-span-8 flex flex-col min-h-[600px]">
             <div class="section-card h-full flex flex-col relative overflow-hidden">
                 <div class="flex justify-between items-center mb-3 shrink-0">
@@ -385,13 +376,13 @@
                     roots.forEach(r => {
                         const outSum = links.filter(l => l.s === r).reduce((sum, l) => sum + l.v, 0);
                         tabTotal += outSum;
-                        lines.push(`${tab.name} ${r} ${(outSum * tab.factor).toFixed(2)}`);
+                        lines.push(`${tab.name} ${r} ${parseFloat((outSum * tab.factor).toFixed(6))}`);
                     });
                     
                     if(tabTotal > 0) {
-                        lines.unshift(`综合能耗总计 ${tab.name} ${(tabTotal * tab.factor).toFixed(2)}`);
+                        lines.unshift(`综合能耗总计 ${tab.name} ${parseFloat((tabTotal * tab.factor).toFixed(6))}`);
                     }
-                    links.forEach(l => lines.push(`${l.s} ${l.t} ${(l.v * tab.factor).toFixed(2)}`));
+                    links.forEach(l => lines.push(`${l.s} ${l.t} ${parseFloat((l.v * tab.factor).toFixed(6))}`));
                 });
                 return lines.join('\n');
             });
@@ -401,7 +392,6 @@
                 if(t) t.data = v;
             }, { immediate: true });
 
-            // 【核心修复】将西文和中文字体组合成标准 CSS font-family 字符串，让浏览器和 Canvas 自动实现混排降级
             const getFontFamilyStr = (config) => {
                 return `"${config.fontFamilyEN}", "${config.fontFamilyCN}", sans-serif`;
             };
@@ -508,10 +498,12 @@
                         textStyle: { fontFamily: getFontFamilyStr(chartStyle.value) },
                         formatter: (params) => {
                             const u = tab.unit ? `${tab.unit}` : '';
+                            // 修复：悬浮窗浮点数精度截断处理
+                            const cleanValue = typeof params.value === 'number' ? parseFloat(params.value.toFixed(6)) : params.value;
                             if (params.dataType === 'node') {
-                                return `${params.name}<br/>总计: <b>${params.value}</b> ${u}`;
+                                return `${params.name}<br/>总计: <b>${cleanValue}</b> ${u}`;
                             } else if (params.dataType === 'edge') {
-                                return `${params.data.source} ➔ ${params.data.target}<br/>流量: <b>${params.value}</b> ${u}`;
+                                return `${params.data.source} ➔ ${params.data.target}<br/>流量: <b>${cleanValue}</b> ${u}`;
                             }
                         }
                     },
@@ -532,10 +524,11 @@
                         labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
                         label: {
                             position: chartStyle.value.labelPosition,
-                            // 【核心修复】统一使用 {base|}包裹，彻底解决中英混排问题
                             formatter: (params) => {
                                 const unitStr = tab.unit ? ` ${tab.unit}` : '';
-                                return `{base|${params.name}\n${params.value}${unitStr}}`;
+                                // 修复：标签浮点数精度截断处理（最多保留6位小数，自动去除尾部0）
+                                const cleanValue = typeof params.value === 'number' ? parseFloat(params.value.toFixed(6)) : params.value;
+                                return `{base|${params.name}\n${cleanValue}${unitStr}}`;
                             },
                             rich: buildRichTextConfig(chartStyle.value)
                         }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全厂能资源平衡桑基图生成系统 - 纯净版</title>
+    <title>全厂能资源平衡桑基图生成系统</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -203,7 +203,7 @@
                     </div>
 
                     <div>
-                        <div class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">默认字体设置</div>
+                        <div class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">标签与数据格式</div>
                         <div class="grid grid-cols-2 gap-4 mb-3">
                             <div>
                                 <label class="block mb-1.5 text-xs text-slate-600">中文字体</label>
@@ -242,10 +242,21 @@
                             <div>
                                 <label class="block mb-1.5 text-xs text-slate-600">标签基准位置</label>
                                 <select v-model="chartStyle.labelPosition" class="custom-input w-full h-8 text-sm p-1">
-                                    <option value="right">节点右侧 (默认)</option>
+                                    <option value="right">节点右侧</option>
                                     <option value="left">节点左侧</option>
                                     <option value="inside">节点内部</option>
                                     <option value="top">节点上方</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block mb-1.5 text-xs text-slate-600">数值显示精度</label>
+                                <select v-model="chartStyle.decimalPlaces" class="custom-input w-full h-8 text-sm p-1">
+                                    <option value="auto">自动识别 (按输入还原，去除多余的0)</option>
+                                    <option :value="0">保留 0 位小数 (四舍五入取整)</option>
+                                    <option :value="1">固定保留 1 位小数</option>
+                                    <option :value="2">固定保留 2 位小数</option>
+                                    <option :value="3">固定保留 3 位小数</option>
+                                    <option :value="4">固定保留 4 位小数</option>
                                 </select>
                             </div>
                         </div>
@@ -322,7 +333,8 @@
                 nodeWidth: 20, nodeGap: 20,
                 textColor: '#1e293b', labelPosition: 'right', opacity: 0.4,
                 fontFamilyCN: 'SimSun', fontFamilyEN: 'Times New Roman',
-                fontSize: 13, isBold: false, isItalic: false, isUnderline: false
+                fontSize: 13, isBold: false, isItalic: false, isUnderline: false,
+                decimalPlaces: 'auto' // 新增小数位数控制属性
             });
 
             const chartInstances = {};
@@ -407,6 +419,15 @@
                         textDecoration: config.isUnderline ? 'underline' : 'none'
                     }
                 };
+            };
+
+            // 新增：全局数值格式化处理函数
+            const formatNumber = (val) => {
+                if (typeof val !== 'number') return val;
+                if (chartStyle.value.decimalPlaces === 'auto') {
+                    return parseFloat(val.toFixed(6)); // 自动模式：修复精度误差并去除多余的0
+                }
+                return val.toFixed(chartStyle.value.decimalPlaces); // 固定模式：补零或截断
             };
 
             const renderChart = () => {
@@ -497,9 +518,8 @@
                     tooltip: { 
                         textStyle: { fontFamily: getFontFamilyStr(chartStyle.value) },
                         formatter: (params) => {
-                            const u = tab.unit ? `${tab.unit}` : '';
-                            // 修复：悬浮窗浮点数精度截断处理
-                            const cleanValue = typeof params.value === 'number' ? parseFloat(params.value.toFixed(6)) : params.value;
+                            const u = tab.unit ? ` ${tab.unit}` : '';
+                            const cleanValue = formatNumber(params.value); // 接入自定义格式化
                             if (params.dataType === 'node') {
                                 return `${params.name}<br/>总计: <b>${cleanValue}</b> ${u}`;
                             } else if (params.dataType === 'edge') {
@@ -526,8 +546,7 @@
                             position: chartStyle.value.labelPosition,
                             formatter: (params) => {
                                 const unitStr = tab.unit ? ` ${tab.unit}` : '';
-                                // 修复：标签浮点数精度截断处理（最多保留6位小数，自动去除尾部0）
-                                const cleanValue = typeof params.value === 'number' ? parseFloat(params.value.toFixed(6)) : params.value;
+                                const cleanValue = formatNumber(params.value); // 接入自定义格式化
                                 return `{base|${params.name}\n${cleanValue}${unitStr}}`;
                             },
                             rich: buildRichTextConfig(chartStyle.value)
